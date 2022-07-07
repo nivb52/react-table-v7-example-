@@ -2,7 +2,7 @@ import './App.css';
 
 import tw from 'twin.macro';
 import { Products } from './components/products';
-import { Users } from './components/users';
+import { UsersDataset } from './components/users';
 
 const AppContainer = tw.div`
   w-full
@@ -27,7 +27,7 @@ function App() {
     <AppContainer>
       <Title>Abstract React Tables</Title>
       {/* <Products /> */}
-      <Users />
+      <UsersDataset />
     </AppContainer>
   );
 }

@@ -1,3 +1,5 @@
+import './table.css';
+
 import * as React from 'react';
 import {
   useGlobalFilter,
@@ -5,6 +7,7 @@ import {
   useTable,
   useBlockLayout,
   useResizeColumns,
+  usePagination,
 } from 'react-table';
 
 import {
@@ -63,7 +66,8 @@ function TableHandler({
       tableHooks,
       useSortBy,
       useBlockLayout,
-      useResizeColumns
+      useResizeColumns,
+      usePagination
     );
 
   const {
@@ -122,30 +126,60 @@ function useTableHandler() {
   return context;
 }
 
-function THead({ children }) {
+const defaultRenderColumnTHead = (column) => {
+  <TableHeaderUI {...column.getHeaderProps(column.getSortByToggleProps())}>
+    {column.render('Header')}
+    {column.isSorted ? (column.isSortedDesc ? ' ▼' : ' ▲') : ''}
+    <div
+      {...column.getResizerProps()}
+      className={`resizer ${column.isResizing ? 'isResizing' : ''}`}
+    />
+  </TableHeaderUI>;
+};
+
+function THead({ renderColumn = defaultRenderColumnTHead }) {
   const { headerGroups } = useTableHandler();
   return (
     <TableHeadUI>
-      {headerGroups.map((headerGroup) => (
-        <TableRowUI {...headerGroup.getHeaderGroupProps()}>
-          {headerGroup.headers.map((column) => (
-            <TableHeaderUI
-              {...column.getHeaderProps(column.getSortByToggleProps())}>
-              {column.render('Header')}
-              {column.isSorted ? (column.isSortedDesc ? ' ▼' : ' ▲') : ''}
-              <div
-                {...column.getResizerProps()}
-                className={`resizer ${column.isResizing ? 'isResizing' : ''}`}
-              />
-            </TableHeaderUI>
-          ))}
+      {headerGroups.map((headerGroup, indexKey) => (
+        <TableRowUI key={indexKey} {...headerGroup.getHeaderGroupProps()}>
+          {headerGroup.headers.map(renderColumn)}
         </TableRowUI>
       ))}
     </TableHeadUI>
   );
 }
 
-function TBody({ children }) {
+const defaultRenderColumnTBody = (prepareRow, row, idx) => {
+  prepareRow(row);
+  return (
+    <TableRowUI
+      {...row.getRowProps()}
+      className={isEven(idx) ? 'bg-green-400 bg-opacity-30' : ''}>
+      {row.cells.map((cell, idx) => (
+        <TableDataUI {...cell.getCellProps()}>
+          {cell.render('Cell')}
+        </TableDataUI>
+      ))}
+    </TableRowUI>
+  );
+};
+
+function TBody({ renderColumn = defaultRenderColumnTBody }) {
+  const { page, getTableBodyProps, prepareRow } = useTableHandler();
+  const rendreCell = renderColumn.bind(this, prepareRow);
+  return (
+    <TableBodyUI {...getTableBodyProps()}>
+      {page && page.length > 0 ? (
+        page.map(rendreCell)
+      ) : (
+        <div>No Data Found</div>
+      )}
+    </TableBodyUI>
+  );
+}
+
+function TBodyNoPagination({ children }) {
   const { rows, getTableBodyProps, prepareRow } = useTableHandler();
   return (
     <TableBodyUI {...getTableBodyProps()}>
