@@ -1,8 +1,8 @@
-import logo from "./logo.svg";
-import "./App.css";
+import './App.css';
 
-import tw from "twin.macro";
-import { Products } from "./components/products";
+import tw from 'twin.macro';
+import { Products } from './components/products';
+import { Users } from './components/users';
 
 const AppContainer = tw.div`
   w-full
@@ -25,8 +25,9 @@ const Title = tw.h1`
 function App() {
   return (
     <AppContainer>
-      <Title>React Tables</Title>
-      <Products />
+      <Title>Abstract React Tables</Title>
+      {/* <Products /> */}
+      <Users />
     </AppContainer>
   );
 }

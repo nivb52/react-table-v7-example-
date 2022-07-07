@@ -1,0 +1,108 @@
+import React from 'react';
+import {
+  useGlobalFilter,
+  useSortBy,
+  useTable,
+  useResizeColumns,
+} from 'react-table';
+
+import { Button } from './ui';
+
+function useTableWarpper({
+  columns,
+  data,
+  tableOptions = {
+    manualSortBy: false,
+  },
+  tableHooksOverride = null,
+}) {
+  const useTableOptions = Object.assign({ columns, data }, tableOptions);
+  const tableHooks = tableHooksOverride
+    ? tableHooksOverride(hooks)
+    : (hooks) => {
+        hooks.visibleColumns.push((columns) => [
+          ...columns,
+          {
+            id: 'edit',
+            Header: 'Edit',
+            Cell: ({ row }) => (
+              <Button
+                className=" hover:bg-blue-200"
+                onClick={() => alert('Editing Id: ' + row.values.id)}>
+                ✎
+              </Button>
+            ),
+          },
+          {
+            id: 'delete',
+            Header: 'Delete',
+            Cell: ({ row }) => (
+              <Button
+                className="  hover:bg-red-200"
+                onClick={() => alert('Deleting Id: ' + row.values.id)}>
+                🗑
+              </Button>
+            ),
+          },
+        ]);
+      };
+
+  const tableInstance = useTable(
+    useTableOptions,
+    useGlobalFilter,
+    tableHooks,
+    useSortBy,
+    useResizeColumns
+  );
+
+  const {
+    getTableProps,
+    getTableBodyProps,
+    headerGroups,
+    rows,
+    prepareRow,
+    preGlobalFilteredRows,
+    setGlobalFilter,
+    state,
+    page,
+    nextPage,
+    previousPage,
+    canNextPage,
+    canPreviousPage,
+    pageOptions,
+    gotoPage,
+    pageCount,
+    setSortBy,
+    allColumns,
+  } = tableInstance;
+
+  return {
+    getTableProps,
+    getTableBodyProps,
+    headerGroups,
+    rows,
+    prepareRow,
+    preGlobalFilteredRows,
+    setGlobalFilter,
+    state,
+    page,
+    nextPage,
+    previousPage,
+    canNextPage,
+    canPreviousPage,
+    pageOptions,
+    gotoPage,
+    pageCount,
+    setSortBy,
+    allColumns,
+  };
+}
+
+export default useTableWarpper;
+
+const TableContext = React.createContext();
+TableContext.displayName = 'TableContext';
+
+function TableWrapper({ children }) {
+  return <TableContext.Provider value={{}}>{children}</TableContext.Provider>;
+}
