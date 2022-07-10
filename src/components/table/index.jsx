@@ -5,4 +5,5 @@ export {
   TableContext,
   THead,
   TBody,
+  TPagination,
 } from './Table';

@@ -14,25 +14,12 @@ import {
   TableHandler,
   useTableHandler,
   TableContext,
+  TPagination,
   THead,
   TBody,
 } from '../table';
 
 import { Table as TableUI, Button } from './ui';
-
-// REDUCER TYPES
-const PAGE_CHANGED = 'PAGE_CHANGED';
-const PAGE_SORT_CHANGED = 'PAGE_SORT_CHANGED';
-const PAGE_FILTER_CHANGED = 'PAGE_FILTER_CHANGED';
-const TOTAL_COUNT_CHANGED = 'TOTAL_COUNT_CHANGED';
-
-const initialState = {
-  queryPageIndex: 0,
-  queryPageSize: 10,
-  totalCount: 0,
-  queryPageFilter: '',
-  queryPageSortBy: [],
-};
 
 export function UsersDataset() {
   const [users, setUsers] = React.useState([]);
@@ -45,9 +32,9 @@ export function UsersDataset() {
     // const sortQuery = state.sortBy
     //   ? `&sort=${state.sortBy.desc ? 'desc' : 'asc'}`
     //   : '';
-    const start = (state.queryPageIndex || 0) * state.queryPageSize;
-    const end = (state.queryPageIndex || 0) * state.queryPageSize + 10;
-    console.log({ start, end });
+    const start = 0; //(state.queryPageIndex || 0) * state.queryPageSize;
+    const end = 10; // (state.queryPageIndex || 0) * state.queryPageSize + 10;
+    // console.log({ start, end });
     const response = {
       data: mockPoeple.slice(start, end),
     };
@@ -73,46 +60,6 @@ export function UsersDataset() {
     },
     [setUsers, setLoading]
   );
-
-  const reducer = (state, action) => {
-    console.table(action.payload);
-    switch (action.type) {
-      case PAGE_CHANGED:
-        return {
-          ...state,
-          queryPageIndex: action.payload,
-        };
-      case PAGE_SORT_CHANGED:
-        return {
-          ...state,
-          queryPageSortBy: action.payload,
-        };
-      case PAGE_FILTER_CHANGED:
-        return {
-          ...state,
-          queryPageFilter: action.payload,
-        };
-      case TOTAL_COUNT_CHANGED:
-        return {
-          ...state,
-          totalCount: action.payload,
-        };
-      case 'JUST_A_DEBUG_CHANGE':
-        return state;
-      default:
-        throw new Error(`Unhandled action type: ${action.type}`);
-    }
-  };
-  const [
-    {
-      queryPageIndex,
-      queryPageSize = DEFAULT_PAGE_SIZE,
-      totalCount,
-      queryPageFilter,
-      queryPageSortBy,
-    },
-    dispatch,
-  ] = React.useReducer(reducer, initialState);
 
   const data = React.useMemo(() => [...users], [users]);
   const columns = React.useMemo(
@@ -145,14 +92,8 @@ export function UsersDataset() {
   };
 
   React.useEffect(() => {
-    fetchDataWrapper({
-      queryPageIndex,
-      queryPageSize,
-      totalCount,
-      queryPageFilter,
-      queryPageSortBy,
-    });
-  }, [queryPageIndex, totalCount]);
+    fetchDataWrapper();
+  }, []);
 
   if (isLoading) {
     return (
@@ -164,59 +105,14 @@ export function UsersDataset() {
 
   return (
     <TableHandler useTableOptions={useTableOptions}>
-      <UsersTable dispatch={dispatch} />
+      <UsersTable />
     </TableHandler>
   );
 }
 
 function UsersTable({ dispatch }) {
-  const { getTableProps, nextPage, previousPage, pageIndex, state, gotoPage } =
-    useTableHandler();
-
-  const canNextPage = React.useCallback(
-    (pageIndex) =>
-      pageIndex < Math.ceil(state.totalCount / state.queryPageSize) - 1,
-    [state.totalCount, state.queryPageSize]
-  );
-  const canPreviousPage = React.useCallback(
-    (pageIndex) => pageIndex > 0,
-    [state.totalCount, state.queryPageSize]
-  );
-
-  React.useEffect(() => {
-    dispatch({ type: PAGE_SORT_CHANGED, payload: state.sortBy });
-    gotoPage(0);
-  }, [state.sortBy, gotoPage]);
-
-  // React.useEffect(() => {
-  //   console.log(PAGE_CHANGED, 'in React USE EFFECT');
-  //   dispatch({ type: PAGE_CHANGED, payload: state.pageIndex });
-  // }, [state.pageIndex]);
-
-  //
-  const gotoPageWrapper = React.useCallback(
-    (pageIndex) => {
-      dispatch({ type: PAGE_CHANGED, payload: pageIndex });
-      gotoPage(pageIndex);
-    },
-    [gotoPage]
-  );
-
-  const nextPageWrapper = () => {
-    const { pageIndex } = state;
-    console.log('nextPageWrapper', pageIndex);
-    // console.table(state);
-    // if (!canNextPage(pageIndex)) return;
-    gotoPageWrapper(pageIndex + 1);
-  };
-
-  const previousPageWrapper = () => {
-    const { pageIndex } = state;
-    console.log('previousPageWrapper', pageIndex);
-    // console.table(state);
-    // if (!canPreviousPage(pageIndex)) return;
-    gotoPageWrapper(pageIndex - 1);
-  };
+  const { getTableProps, reducerState } = useTableHandler();
+  console.log('UsersTable', reducerState);
 
   return (
     <>
@@ -229,23 +125,7 @@ function UsersTable({ dispatch }) {
         <THead></THead>
         <TBody></TBody>
       </TableUI>
-      <div>
-        <Button
-          // disabled={!canPreviousPage}
-          onClick={() => previousPageWrapper()}>
-          ⇽
-        </Button>
-        {Array.from({ length: PAGES_COUNT }, (_, i) => (
-          <Button key={i} onClick={() => gotoPageWrapper(i)}>
-            {i + 1}
-          </Button>
-        ))}
-        <Button
-          // disabled={!canNextPage}
-          onClick={() => nextPageWrapper()}>
-          ⇾
-        </Button>
-      </div>
+      <TPagination />
     </>
   );
 }

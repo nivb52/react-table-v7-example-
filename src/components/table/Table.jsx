@@ -24,6 +24,52 @@ import { isEven, upperCaseFirst } from '../../utils';
 const TableContext = React.createContext();
 TableContext.displayName = 'TableContext';
 
+const DEFAULT_PAGE_SIZE = 10;
+const PAGES_COUNT = 10;
+
+// REDUCER TYPES
+const PAGE_CHANGED = 'PAGE_CHANGED';
+const PAGE_SORT_CHANGED = 'PAGE_SORT_CHANGED';
+const PAGE_FILTER_CHANGED = 'PAGE_FILTER_CHANGED';
+const TOTAL_COUNT_CHANGED = 'TOTAL_COUNT_CHANGED';
+const initialState = {
+  queryPageIndex: 0,
+  queryPageSize: 10,
+  totalCount: 0,
+  queryPageFilter: '',
+  queryPageSortBy: [],
+};
+const defaultReducer = (state, action) => {
+  console.log('defaultReducer', state, action);
+  console.table(action.payload);
+  switch (action.type) {
+    case PAGE_CHANGED:
+      return {
+        ...state,
+        queryPageIndex: action.payload,
+      };
+    case PAGE_SORT_CHANGED:
+      return {
+        ...state,
+        queryPageSortBy: action.payload,
+      };
+    case PAGE_FILTER_CHANGED:
+      return {
+        ...state,
+        queryPageFilter: action.payload,
+      };
+    case TOTAL_COUNT_CHANGED:
+      return {
+        ...state,
+        totalCount: action.payload,
+      };
+    case '_DEBUG':
+      return state;
+    default:
+      throw new Error(`Unhandled action type: ${action.type}`);
+  }
+};
+
 const defaultTableHooks = (hooks) => {
   hooks.visibleColumns.push((columns) => [
     ...columns,
@@ -57,6 +103,7 @@ function TableHandler({
   children,
   tableHooks = defaultTableHooks,
   useTableOptions,
+  reducer: propReducer = defaultReducer,
 }) {
   const tableInstance =
     // tableInstanceProp ||
@@ -91,6 +138,15 @@ function TableHandler({
     allColumns,
   } = tableInstance;
 
+  const [reducerState, dispatch] = React.useReducer(propReducer, initialState);
+
+  const reducerDispatch = React.useCallback(
+    (action) => {
+      dispatch(action);
+    },
+    [dispatch]
+  );
+
   return (
     <TableContext.Provider
       value={{
@@ -112,6 +168,8 @@ function TableHandler({
         pageCount,
         setSortBy,
         allColumns,
+        reducerDispatch,
+        reducerState,
       }}>
       {children}
     </TableContext.Provider>
@@ -127,14 +185,16 @@ function useTableHandler() {
 }
 
 const defaultRenderColumnTHead = (column) => {
-  <TableHeaderUI {...column.getHeaderProps(column.getSortByToggleProps())}>
-    {column.render('Header')}
-    {column.isSorted ? (column.isSortedDesc ? ' ▼' : ' ▲') : ''}
-    <div
-      {...column.getResizerProps()}
-      className={`resizer ${column.isResizing ? 'isResizing' : ''}`}
-    />
-  </TableHeaderUI>;
+  return (
+    <TableHeaderUI {...column.getHeaderProps(column.getSortByToggleProps())}>
+      {column.render('Header')}
+      {column.isSorted ? (column.isSortedDesc ? ' ▼' : ' ▲') : ''}
+      <div
+        {...column.getResizerProps()}
+        className={`resizer ${column.isResizing ? 'isResizing' : ''}`}
+      />
+    </TableHeaderUI>
+  );
 };
 
 function THead({ renderColumn = defaultRenderColumnTHead }) {
@@ -179,31 +239,77 @@ function TBody({ renderColumn = defaultRenderColumnTBody }) {
   );
 }
 
-function TBodyNoPagination({ children }) {
-  const { rows, getTableBodyProps, prepareRow } = useTableHandler();
+function TPagination({ children }) {
+  const { reducerDispatch: dispatch, state, gotoPage } = useTableHandler();
+
+  const canNextPage = React.useCallback(
+    (pageIndex) =>
+      pageIndex < Math.ceil(state.totalCount / state.queryPageSize) - 1,
+    [state.totalCount, state.queryPageSize]
+  );
+  const canPreviousPage = React.useCallback(
+    (pageIndex) => pageIndex > 0,
+    [state.totalCount, state.queryPageSize]
+  );
+
+  React.useEffect(() => {
+    dispatch({ type: PAGE_SORT_CHANGED, payload: state.sortBy });
+    gotoPage(0);
+  }, [state.sortBy, gotoPage]);
+
+  // React.useEffect(() => {
+  //   console.log(PAGE_CHANGED, 'in React USE EFFECT');
+  //   dispatch({ type: PAGE_CHANGED, payload: state.pageIndex });
+  // }, [state.pageIndex]);
+
+  //
+  const gotoPageWrapper = React.useCallback(
+    (pageIndex) => {
+      dispatch({ type: PAGE_CHANGED, payload: pageIndex });
+      gotoPage(pageIndex);
+    },
+    [gotoPage]
+  );
+
+  const nextPageWrapper = () => {
+    const { pageIndex } = state;
+    console.log('nextPageWrapper', pageIndex);
+    // console.table(state);
+    // if (!canNextPage(pageIndex)) return;
+    gotoPageWrapper(pageIndex + 1);
+  };
+
+  const previousPageWrapper = () => {
+    const { pageIndex } = state;
+    console.log('previousPageWrapper', pageIndex);
+    // console.table(state);
+    // if (!canPreviousPage(pageIndex)) return;
+    gotoPageWrapper(pageIndex - 1);
+  };
   return (
-    <TableBodyUI {...getTableBodyProps()}>
-      {rows.map((row, idx) => {
-        prepareRow(row);
-        return (
-          <TableRowUI
-            {...row.getRowProps()}
-            className={isEven(idx) ? 'bg-green-400 bg-opacity-30' : ''}>
-            {row.cells.map((cell, idx) => (
-              <TableDataUI {...cell.getCellProps()}>
-                {cell.render('Cell')}
-              </TableDataUI>
-            ))}
-          </TableRowUI>
-        );
-      })}
-    </TableBodyUI>
+    <div>
+      <Button
+        // disabled={!canPreviousPage}
+        onClick={() => previousPageWrapper()}>
+        ⇽
+      </Button>
+      {Array.from({ length: PAGES_COUNT }, (_, i) => (
+        <Button key={i} onClick={() => gotoPageWrapper(i)}>
+          {i + 1}
+        </Button>
+      ))}
+      <Button
+        // disabled={!canNextPage}
+        onClick={() => nextPageWrapper()}>
+        ⇾
+      </Button>
+    </div>
   );
 }
 
 // function TableSometing({ ...props }) {
 //   const {  } = useTable();
-//   return <Button onClick={toggle} {...props} />;
+//   return <Button onClick={someOnClick} {...props} />;
 // }
 
 // function AbstractTable() {
@@ -221,4 +327,11 @@ function TBodyNoPagination({ children }) {
 // }
 
 // export default AbstractTable;
-export { TableHandler, useTableHandler, TableContext, THead, TBody };
+export {
+  TableHandler,
+  useTableHandler,
+  TableContext,
+  THead,
+  TBody,
+  TPagination,
+};
